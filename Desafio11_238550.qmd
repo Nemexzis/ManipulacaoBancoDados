@@ -1,0 +1,146 @@
+---
+title: "Lab 11: Análise de Dados de Renda"
+author: "Felipe Basilio"
+format: html
+editor: visual
+---
+
+## Setup do Ambiente
+
+O primeiro passo em qualquer relatório reproduzível é carregar as bibliotecas necessárias.
+
+```{r setup, include=FALSE}
+# Carrega a 'ponte' entre R e Python
+library(reticulate)
+```
+
+```{python python-setup}
+# Importa todas as bibliotecas Python que vamos usar no relatório
+import polars as pl
+import matplotlib.pyplot as plt
+import numpy as np
+
+print("Bibliotecas Python carregadas.")
+```
+
+## 1. Carga e Preparação dos Dados
+
+Este é o passo mais importante. Criamos o nosso DataFrame principal `df_renda_adulta` aqui. Todos os blocos de código seguintes dependerão da execução bem-sucedida deste.
+
+```{python carga-dados}
+# Passo 1: Definir os nomes das colunas
+colunas = [
+    'age', 'workclass', 'fnlwgt', 'education', 'education-num',
+    'marital-status', 'occupation', 'relationship', 'race', 'sex',
+    'capital-gain', 'capital-loss', 'hours-per-week', 'native-country',
+    'income'
+]
+
+# Passo 2: Definir os tipos de cada coluna
+tipos_colunas = {
+    'age': pl.Int64, 'workclass': pl.Categorical, 'fnlwgt': pl.Int64,
+    'education': pl.Categorical, 'education-num': pl.Int64,
+    'marital-status': pl.Categorical, 'occupation': pl.Categorical,
+    'relationship': pl.Categorical, 'race': pl.Categorical, 'sex': pl.Categorical,
+    'capital-gain': pl.Int64, 'capital-loss': pl.Int64,
+    'hours-per-week': pl.Int64, 'native-country': pl.Categorical,
+    'income': pl.Categorical
+}
+
+# Passo 3: Importar o arquivo CSV
+try:
+    df_renda_adulta = pl.read_csv(
+        "renda_adulta.csv.gz", # VERIFIQUE: O nome do seu arquivo está correto?
+        has_header=False,
+        new_columns=colunas,
+        dtypes=tipos_colunas,
+        null_values="?"
+    )
+    print("Dados importados com sucesso!")
+    # Em um ambiente de notebook, basta chamar a variável para exibi-la formatada
+    df_renda_adulta.head()
+
+except FileNotFoundError:
+    print("Erro: O arquivo 'renda_adulta.csv.gz' não foi encontrado.")
+```
+
+## 2. Apresente os tipos de cada uma das colunas
+
+```{python tipos-coluna}
+df_renda_adulta.schema
+```
+
+## 3. Apresente as dimensões da tabela de dados
+
+```{python dimensoes}
+print(f"A tabela tem {df_renda_adulta.height} linhas e {df_renda_adulta.width} colunas.")
+```
+
+## 4. Contagem de pessoas por faixa salarial
+
+```{python contagem-renda}
+df_renda_adulta.group_by("income").count()
+```
+
+## 5. Transformação para formato Longo (capital-gain/loss)
+
+```{python pivot-longo}
+colunas_id = [col for col in df_renda_adulta.columns if col not in ['capital-gain', 'capital-loss']]
+
+renda_longo = df_renda_adulta.melt(
+    id_vars=colunas_id,
+    value_vars=['capital-gain', 'capital-loss'],
+    variable_name='tipo',
+    value_name='Valor'
+)
+
+print("Dimensões da nova tabela:", renda_longo.shape)
+renda_longo.head()
+```
+
+## 6. Média de horas trabalhadas por classe salarial
+
+```{python media-horas}
+df_renda_adulta.group_by("income").agg(
+    pl.col("hours-per-week").mean().alias("media_horas_semanais")
+)
+```
+
+## 7. Contagem de pessoas por profissão
+
+```{python contagem-profissao}
+df_renda_adulta.group_by("occupation").count().sort("count", descending=True)
+```
+
+## 8. Gráfico: Média de horas por nível salarial
+
+```{python grafico-matplotlib}
+# 1. Calculamos a média
+media_horas_por_renda = df_renda_adulta.group_by("income").agg(
+    pl.col("hours-per-week").mean().alias("media_horas_semanais")
+)
+
+# 2. Extraímos as colunas do Polars como listas
+categorias = media_horas_por_renda.get_column("income").to_list()
+valores = media_horas_por_renda.get_column("media_horas_semanais").to_list()
+
+# 3. Criamos o gráfico com matplotlib
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.bar(categorias, valores, color=['lightcoral', 'skyblue'])
+ax.set_title("Média de Horas Semanais Trabalhadas por Faixa Salarial")
+ax.set_xlabel("Faixa Salarial")
+ax.set_ylabel("Média de Horas Trabalhadas")
+ax.set_ylim(0, 50)
+plt.show()
+```
+
+## 9. Desafio: Evidência de discriminação salarial por gênero
+
+```{python desafio-genero}
+analise_fatores = df_renda_adulta.group_by("sex").agg(
+    pl.col("hours-per-week").mean().alias("media_horas_semanais"),
+    pl.col("education-num").mean().alias("media_anos_educacao")
+)
+
+analise_fatores
+```
