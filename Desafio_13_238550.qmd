@@ -1,0 +1,147 @@
+---
+title: "Lab Polars 03 – Item 1"
+format: html
+jupyter: python3
+---
+
+## Criar banco de dados SQLite com Polars
+
+```{python}
+# Importar as bibliotecas necessárias
+import polars as pl
+import sqlite3
+
+# Ler os arquivos comprimidos TSV
+# (ajuste o caminho conforme o local dos seus arquivos)
+basics = pl.read_csv("title.basics0.tsv.gz", separator="\t", null_values="\\N")
+ratings = pl.read_csv("title.ratings.tsv.gz", separator="\t", null_values="\\N")
+principals = pl.read_csv("title.principals0.tsv.gz", separator="\t", null_values="\\N")
+
+# Verificar as primeiras linhas (opcional)
+print(basics.head())
+print(ratings.head())
+print(principals.head())
+
+# Criar conexão com o banco de dados SQLite
+conn = sqlite3.connect("movies.sqlite3")
+
+# Escrever os DataFrames no banco
+basics.write_database(table_name="basics", connection=conn, if_table_exists="replace")
+ratings.write_database(table_name="ratings", connection=conn, if_table_exists="replace")
+principals.write_database(table_name="principals", connection=conn, if_table_exists="replace")
+
+# Fechar a conexão
+conn.close()
+```
+
+2.(Utilizando SQL, responda): Quais são os 5 filmes com as maiores notas (averageRating)? Apresente uma solução capaz de desempatar os filmes baseando-se no número de votos recebidos.
+```{python}
+# Conectar ao banco de dados
+conn = sqlite3.connect("movies.sqlite3")
+
+# Consulta SQL para os 5 filmes com maiores notas
+query = """
+SELECT 
+    b.primaryTitle AS titulo,
+    r.averageRating AS nota_media,
+    r.numVotes AS numero_votos,
+    b.startYear AS ano,
+    b.genres AS generos
+FROM basics b
+JOIN ratings r ON b.tconst = r.tconst
+WHERE b.titleType = 'movie'  -- Filtra apenas filmes
+  AND r.numVotes >= 1000     -- Considera apenas filmes com pelo menos 1000 votos
+ORDER BY 
+    r.averageRating DESC,    -- Ordena por nota (maior primeiro)
+    r.numVotes DESC          -- Desempata por número de votos (mais votados primeiro)
+LIMIT 5;
+"""
+
+# Executar a consulta usando Polars
+result = pl.read_database(query, conn)
+conn.close()
+
+# Exibir os resultados
+print("Top 5 filmes com maiores notas médias:")
+print("=" * 60)
+print(result)
+```
+
+3.(Utilizando SQL, responda): Qual é o gênero mais frequente entre os filmes com nota maior que 8?
+```{python}
+# Conectar ao banco de dados
+conn = sqlite3.connect("movies.sqlite3")
+
+# Consulta SQL para o gênero mais frequente em filmes com nota > 8
+query = """
+WITH filmes_nota_alta AS (
+    SELECT 
+        b.tconst,
+        b.genres
+    FROM basics b
+    JOIN ratings r ON b.tconst = r.tconst
+    WHERE b.titleType = 'movie'
+      AND r.averageRating > 8
+      AND b.genres IS NOT NULL
+      AND b.genres != '\\N'
+),
+generos_separados AS (
+    SELECT 
+        fna.tconst,
+        -- Divide a string de gêneros separados por vírgula em linhas individuais
+        trim(g.value) AS genero
+    FROM filmes_nota_alta fna,
+    json_each('["' || replace(fna.genres, ',', '","') || '"]') g
+    WHERE g.value != ''
+)
+SELECT 
+    genero,
+    COUNT(*) as quantidade_filmes,
+    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(DISTINCT tconst) FROM generos_separados), 2) as percentual
+FROM generos_separados
+GROUP BY genero
+ORDER BY quantidade_filmes DESC
+LIMIT 10;
+"""
+
+# Executar a consulta usando Polars
+result = pl.read_database(query, conn)
+conn.close()
+
+# Exibir os resultados
+print("Gêneros mais frequentes em filmes com nota > 8:")
+print("=" * 50)
+print(result)
+```
+4.(Utilizando SQL, responda): Quais são os 3 atores/atrizes que mais participaram de filmes com nota maior que 7.5?
+```{python}
+# Conectar ao banco de dados
+conn = sqlite3.connect("movies.sqlite3")
+
+# Consulta SQL para os atores/atrizes que mais participaram de filmes com nota > 7.5
+query = """
+SELECT 
+    p.nconst as id_ator,
+    COUNT(DISTINCT p.tconst) as quantidade_filmes,
+    -- Aqui normalmente teríamos uma tabela de nomes, mas usando o ID por enquanto
+    p.nconst as identificador
+FROM principals p
+JOIN basics b ON p.tconst = b.tconst
+JOIN ratings r ON p.tconst = r.tconst
+WHERE b.titleType = 'movie'
+  AND r.averageRating > 7.5
+  AND p.category IN ('actor', 'actress')  -- Filtra apenas atores e atrizes
+  AND (p.characters IS NOT NULL AND p.characters != '\\N')  -- Garante que tem personagem atribuído
+GROUP BY p.nconst
+ORDER BY quantidade_filmes DESC
+LIMIT 3;
+"""
+
+# Executar a consulta usando Polars
+result = pl.read_database(query, conn)
+
+print("Top 3 atores/atrizes que mais participaram de filmes com nota > 7.5:")
+print("=" * 70)
+print(result)
+```
+
