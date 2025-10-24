@@ -1,0 +1,171 @@
+---
+title: "Desafio 14"
+author: "Felipe Basilio da Silva"
+format:
+  html:
+    self-contained: true
+editor: visual
+---
+
+# DESAFIO 14
+
+```{r setup}
+library(reticulate)
+
+reticulate::py_install("plotnine")
+```
+
+```{python}
+# Carregando dados econômicos
+
+from plotnine.data import economics
+print(economics)
+```
+
+# Visualização de dados:
+
+```{python}
+from plotnine import ggplot, aes, geom_line
+
+graf_pop = (
+ggplot(economics)
++ aes(x='date', y='pop')
++ geom_line()
+)
+graf_pop.show()
+```
+
+
+```{python}
+# Carregando outro conjunto de dados
+
+from plotnine.data import mpg
+print(mpg)
+```
+
+# Visualização 1:
+#Gráfico 2 — Classe do veículo vs consumo na estrada
+```{python}
+from plotnine import ggplot, aes, geom_point
+
+graf_disp = (
+ggplot(mpg)
++ aes(x='class', y='hwy')
++ geom_point()
+)
+graf_disp.show()
+```
+
+# Visualização 2:
+# Boxplot + pontos dispersos
+```{python}
+from plotnine import (
+ggplot, aes, geom_boxplot, geom_jitter,
+theme_bw, labs
+)
+
+graf_box = (
+ggplot(mpg)
++ aes(x='class', y='hwy')
++ geom_boxplot()
++ geom_jitter(width=0.2, alpha=0.5)
++ theme_bw()
++ labs(x="Tipo de Veículo", y="Consumo na Estrada (mpg)")
+)
+graf_box.show()
+```
+
+# Visualização 2 Ainda Melhor:
+#Gráfico 4 — Conversão para km/L e rótulos aprimorados
+```{python}
+graf_box_km = (
+ggplot(mpg)
++ aes(x='class', y='hwy * 0.4251')
++ geom_boxplot()
++ geom_jitter(width=0.2, alpha=0.5)
++ theme_bw()
++ labs(
+x="Tipo de Veículo",
+y="Consumo na Estrada (km/L)",
+title="Consumo de Combustível",
+subtitle="Veículos fabricados entre 1999 e 2008"
+)
+)
+graf_box_km.show()
+```
+
+
+# Consumo vs. Número de Cilindros:
+
+```{python}
+graf_cil = (
+ggplot(mpg)
++ aes(x='cyl', y='hwy')
++ geom_point()
+)
+graf_cil.show()
+```
+
+O número de cilindros é, na prática, visto como uma variável categórica
+
+```{python}
+from plotnine import coord_flip
+
+graf_cil_cat = (
+ggplot(mpg)
++ aes(x='factor(cyl)', y='hwy * 0.4251')
++ geom_boxplot()
++ coord_flip()
++ theme_bw()
++ labs(x='Número de Cilindros', y='Consumo na Estrada (km/L)')
+)
+graf_cil_cat.show()
+```
+
+# Representando mais que 2 dimensões:
+#Facetas por ano e classe
+```{python}
+from plotnine import facet_grid
+
+graf_facetas = (
+ggplot(mpg)
++ aes(x='displ', y='hwy * 0.4251')
++ geom_point()
++ facet_grid('year', 'class')
++ theme_bw()
++ labs(x='Tamanho do Motor', y='Consumo na Estrada (km/L)')
+)
+graf_facetas.show()
+```
+
+# Representando mais que 2 dimensões:
+# Facetas e cores por ano
+```{python}
+graf_facetas_color = (
+ggplot(mpg)
++ aes(x='displ', y='hwy * 0.4251', color='factor(year)')
++ geom_point()
++ facet_grid(cols='class')
++ theme_bw()
++ labs(
+x='Tamanho do Motor',
+y='Consumo na Estrada (km/L)',
+color='Ano de Fabricação',
+title='Consumo de Combustível vs Tamanho do Motor',
+subtitle='Motores maiores consomem mais combustível'
+)
+)
+graf_facetas_color.show()
+
+```
+
+# Gravando Gráficos em Arquivos:
+```{python}
+graf_final = graf_facetas_color
+graf_final.save("grafico_final.png", dpi=600)
+```
+
+```{r}
+# Salvando a data e o horário em que o html foi gerado
+Sys.time()
+```
