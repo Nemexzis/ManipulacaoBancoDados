@@ -1,0 +1,153 @@
+---
+title: "Desafio 14"
+format: pdf
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+cat("Arquivo compilado em:", format(Sys.time(), "%d/%m/%Y às %H:%M:%S"), "\n")
+```
+
+```{r}
+library(reticulate)
+py_install("pyarrow")
+```
+
+```{python}
+import polars as pl
+```
+
+```{python}
+diamonds = pl.read_csv("diamonds.csv.gz")
+print(diamonds)
+```
+
+```{python}
+diamonds = diamonds.with_columns(
+  pl.col("cut").cast(pl.Enum(["Fair", "Good", "Very Good", "Premium", "Ideal"])),
+  pl.col("color").cast(pl.Enum(["D", "E", "F", "G", "H", "I", "J"])),
+  pl.col("clarity").cast(pl.Enum(["IF", "VVS1", "VVS2", "VS1", "VS2", "SI1", "SI2", "I1"]))
+)
+print(diamonds)
+```
+
+```{python}
+import matplotlib.pyplot as plt
+
+# Criar o gráfico
+plt.figure(figsize=(10, 6))
+plt.scatter(diamonds['carat'], diamonds['price'], alpha=0.1, s=10)
+
+# Configurar labels e título
+plt.xlabel('Peso (quilates)', fontsize=12)
+plt.ylabel('Preço (USD)', fontsize=12)
+plt.title('Preço de Diamantes vs. Peso', fontsize=14, fontweight='bold')
+plt.suptitle('Preço em Dólares, Peso em Quilates', y=0.96, fontsize=10)
+
+# Estilo similar ao theme_bw()
+plt.grid(True, alpha=0.3)
+plt.style.use('seaborn-v0_8-whitegrid')
+
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+diamonds = diamonds.with_columns(
+    pl.col("cut").cast(pl.Enum(["Fair", "Good", "Very Good", "Premium", "Ideal"])),
+    pl.col("color").cast(pl.Enum(["D", "E", "F", "G", "H", "I", "J"])),
+    pl.col("clarity").cast(pl.Enum(["IF", "VVS1", "VVS2", "VS1", "VS2", "SI1", "SI2", "I1"]))
+)
+
+# Converter para pandas
+diamonds_pd = diamonds.to_pandas()
+
+# Criar subplots para cada categoria de "cut"
+cuts = ["Fair", "Good", "Very Good", "Premium", "Ideal"]
+n_cuts = len(cuts)
+
+fig, axes = plt.subplots(1, n_cuts, figsize=(20, 4), sharey=True)
+fig.suptitle('Preço de Diamantes vs. Peso\nPreço em Dólares, Peso em Quilates', 
+             fontsize=14, fontweight='bold')
+
+for i, cut in enumerate(cuts):
+    data_subset = diamonds_pd[diamonds_pd['cut'] == cut]
+    axes[i].scatter(data_subset['carat'], data_subset['price'], alpha=0.1, s=10)
+    axes[i].set_title(cut, fontsize=11)
+    axes[i].set_xlabel('Peso (quilates)', fontsize=10)
+    axes[i].grid(True, alpha=0.3)
+    
+axes[0].set_ylabel('Preço (USD)', fontsize=10)
+plt.tight_layout()
+plt.show()
+```
+
+```{python}
+diamonds = diamonds.with_columns(
+    pl.col("cut").cast(pl.Enum(["Fair", "Good", "Very Good", "Premium", "Ideal"])),
+    pl.col("color").cast(pl.Enum(["D", "E", "F", "G", "H", "I", "J"])),
+    pl.col("clarity").cast(pl.Enum(["IF", "VVS1", "VVS2", "VS1", "VS2", "SI1", "SI2", "I1"]))
+)
+
+# Criar coluna "clareza" numérica
+diamonds = diamonds.with_columns(
+    (8 - pl.col("clarity").to_physical()).alias("clareza")
+)
+
+# Converter para pandas
+diamonds_pd = diamonds.to_pandas()
+
+# Definir ordem das categorias
+cuts = ["Fair", "Good", "Very Good", "Premium", "Ideal"]
+colors = ["D", "E", "F", "G", "H", "I", "J"]
+
+# Criar grid de subplots com MAIS ESPAÇO
+fig, axes = plt.subplots(len(cuts), len(colors), 
+                         figsize=(24, 18),  # Aumentado
+                         sharex=True, sharey=True)
+
+# Ajustar espaçamento entre subplots
+plt.subplots_adjust(hspace=0.3, wspace=0.3)
+
+fig.suptitle('Preço de Diamantes vs. Peso\nPreço em Dólares, Peso em Quilates', 
+             fontsize=18, fontweight='bold', y=0.998)
+
+# Plotar cada combinação
+for i, cut in enumerate(cuts):
+    for j, color in enumerate(colors):
+        ax = axes[i, j]
+        data_subset = diamonds_pd[(diamonds_pd['cut'] == cut) & 
+                                   (diamonds_pd['color'] == color)]
+        
+        if len(data_subset) > 0:
+            scatter = ax.scatter(data_subset['carat'], 
+                                data_subset['price'],
+                                c=data_subset['clareza'],
+                                cmap='coolwarm',
+                                alpha=0.15,  # Aumentado para ver melhor
+                                s=15,  # Pontos maiores
+                                vmin=1, vmax=8)
+        
+        # Títulos nas bordas - MAIORES
+        if i == 0:
+            ax.set_title(f'Color: {color}', fontsize=13, fontweight='bold', pad=10)
+        if j == 0:
+            ax.set_ylabel(f'{cut}\n\nPreço (USD)', fontsize=11, fontweight='bold')
+        if i == len(cuts) - 1:
+            ax.set_xlabel('Peso (quilates)', fontsize=11)
+        
+        ax.grid(True, alpha=0.3, linewidth=0.5)
+        ax.tick_params(labelsize=9)
+
+# Adicionar colorbar maior e mais visível
+cbar = fig.colorbar(scatter, ax=axes, orientation='vertical', 
+                    fraction=0.015, pad=0.02, aspect=30)
+cbar.set_label('Clareza', fontsize=14, fontweight='bold')
+cbar.set_ticks(range(1, 9))
+cbar.set_ticklabels(['1', '2', '3', '4', '5', '6', '7', '8'])
+cbar.ax.tick_params(labelsize=11)
+
+plt.show()
+```
