@@ -1,0 +1,60 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+
+Chamando e definindo a biblioteca Julia
+```{r}
+Sys.setenv(R_HOME = R.home())
+Sys.setenv(JULIA_HOME = "C:/Users/Felip/AppData/Local/Programs/Julia-1.12.1/bin")
+
+library(JuliaCall)
+
+julia_setup(JULIA_HOME = "C:/Users/Felip/AppData/Local/Programs/Julia-1.12.1/bin")
+```
+
+Loop em Série - Calculando uma soma grande
+```{julia}
+function tarefa_pesada(n)
+    s = 0.0
+    for i in 1:n
+        s += sqrt(i)
+    end
+    return s
+end
+
+# Execução em série
+@time begin
+    resultados_serial = [tarefa_pesada(20_000_000) for _ in 1:4]
+end
+```
+Loop em Paralelo
+```{julia}
+@everywhere function tarefa_pesada(n)
+    s = 0.0
+    for i in 1:n
+        s += sqrt(i)
+    end
+    return s
+end
+
+using Distributed
+
+@time begin
+    resultados_paralelo = @distributed (vcat) for _ in 1:4
+        tarefa_pesada(20_000_000)
+    end
+end
+```
+Loop Paralelo usando threads
+```{julia}
+using Base.Threads
+
+@time begin
+    resultados_thread = Vector{Float64}(undef, 4)
+    @threads for i in 1:4
+        resultados_thread[i] = tarefa_pesada(20_000_000)
+    end
+end
+```
