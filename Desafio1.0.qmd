@@ -1,0 +1,42 @@
+---
+title: "Desafio 1"
+author: "Felipe Basilio da Silva"
+format:
+  html:
+    self-contained: true
+editor: visual
+---
+
+```{r}
+# Baixando um pacote para conseguir utilizar melhor o python
+library(reticulate)
+use_virtualenv("~/.virtualenvs/r-reticulate", required = TRUE)
+py_discover_config()
+
+
+reticulate::py_install("pandas", envname = NULL, python = "C:/Program Files/Python312/python.exe")
+```
+
+```{r}
+comeco <- Sys.time()
+dados <- read.csv(unz('C:/Users/Felip/Documents/flights.csv.zip', "flights.csv"))
+fim <- Sys.time()
+fim - comeco
+```
+
+```{r}
+library(readr)
+comeco <- Sys.time()
+dados <- read_csv("C:/Users/Felip/Documents/flights.csv.zip")
+fim <- Sys.time()
+fim - comeco
+```
+
+```{python}
+import time
+import pandas as pd
+comeco = time.time()
+dados = pd.read_csv("C:/Users/Felip/Documents/flights.csv.zip", compression="zip", header=0, sep=",", low_memory=False)
+fim = time.time()
+fim - comeco
+```

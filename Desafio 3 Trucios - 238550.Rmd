@@ -1,0 +1,92 @@
+---
+title: "Parquet/Json"
+output: html_document
+date: "2025-09-02"
+---
+
+Parquet/Json Diferenças: 
+Parquet
+- Mais rápido(Organiza os dados em colunas), invés de carregar tudo carrega apenas partes específicas
+- Com o Parquet, você pode adicionar, remover ou atualizar campos sem quebrar os arquivos existentes.
+- JSON (JavaScript Object Notation) é um formato baseado em texto para armazenar e trocar dados de uma forma que seja legível por humanos e analisável por máquinas.
+- JSON: Pouca compressão (50-70% do tamanho original)
+- Parquet: Alta compressão (10-25% do tamanho original) + columnar storage
+
+Parquet
+```{r}
+install.packages(c("arrow", "dplyr", "tsibble"))
+
+# Carregar pacotes
+library(arrow)
+library(dplyr)
+library(tsibble)
+
+# Criar dados de exemplo
+dados_parquet <- tsibble(
+  data = as.Date("2024-01-01") + 0:9,
+  valor = rnorm(10, 100, 15),
+  categoria = rep(c("A", "B"), 5),
+  index = data
+)
+
+# Salvar como Parquet
+write_parquet(dados_parquet, "exemplo.parquet")
+```
+
+```{r}
+library(arrow)
+
+# Carregar arquivo Parquet
+dados_carregados_parquet <- read_parquet("exemplo.parquet")
+
+# Verificar a estrutura
+str(dados_carregados_parquet)
+head(dados_carregados_parquet)
+
+# Converter para tsibble se necessário
+dados_tsibble <- as_tsibble(dados_carregados_parquet, index = data)
+```
+
+JSON
+
+```{r}
+# Instalar pacote necessário
+install.packages("jsonlite")
+
+# Carregar pacote
+library(jsonlite)
+
+# Criar dados de exemplo
+dados_json <- data.frame(
+  timestamp = seq.POSIXt(from = as.POSIXct("2024-01-01"), 
+                         by = "1 hour", length.out = 10),
+  temperatura = runif(10, 20, 30),
+  umidade = runif(10, 40, 80),
+  local = rep(c("sala", "cozinha"), 5)
+)
+
+# Salvar como JSON
+write_json(dados_json, "exemplo.json", pretty = TRUE)
+```
+
+```{r}
+library(jsonlite)
+library(tsibble)
+
+# Carregar arquivo JSON
+dados_carregados_json <- fromJSON("exemplo.json")
+
+# Converter para data frame
+dados_df <- as.data.frame(dados_carregados_json)
+
+# Converter timestamp para formato datetime
+dados_df$timestamp <- as.POSIXct(dados_df$timestamp, origin = "1970-01-01")
+
+# Converter para tsibble
+dados_tsibble_json <- as_tsibble(dados_df, index = timestamp)
+
+# Verificar resultado
+str(dados_tsibble_json)
+head(dados_tsibble_json)
+```
+

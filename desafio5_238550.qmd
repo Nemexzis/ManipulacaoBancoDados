@@ -1,0 +1,100 @@
+---
+title: "Desafio 5"
+author: "Felipe Basilio da Silva"
+format: html
+editor: visual
+---
+
+```{r}
+library(RSQLite)
+```
+
+```{r}
+db = dbConnect(SQLite(), "disco.db")
+db
+```
+
+```{r}
+dbListTables(db)
+```
+
+```{r}
+dbListFields(db, 'albums')
+```
+
+```{r}
+albumdb = dbGetQuery(db, 'SELECT * FROM albums')
+head(albumdb)
+dim(albumdb)
+```
+
+```{r}
+sql = 'SELECT trackid, name, composer, unitprice FROM tracks ORDER BY unitprice'
+res = dbGetQuery(db, sql)
+head(res)
+```
+
+```{r}
+sql = 'SELECT city FROM customers ORDER BY city'
+ex3a = dbGetQuery(db, sql)
+head(ex3a)
+dim(ex3a)
+```
+
+```{r}
+sql = 'SELECT DISTINCT city FROM customers ORDER BY city'
+ex3b = dbGetQuery(db, sql)
+head(ex3b)
+dim(ex3b)
+```
+
+```{r}
+dbGetQuery(db, 'SELECT name, albumid FROM tracks WHERE albumid=1')
+```
+
+```{r}
+sql = paste('SELECT name, albumid, mediatypeid FROM tracks',
+'WHERE mediatypeid IN (1, 2)',
+'ORDER BY name LIMIT 5')
+dbGetQuery(db, sql)
+```
+
+```{r}
+sql = paste('SELECT trackid, name, albumid FROM tracks',
+'WHERE albumid IN',
+'(SELECT albumid FROM albums WHERE artistid==12)',
+'LIMIT 5')
+dbGetQuery(db, sql)
+```
+
+```{r}
+sql = "SELECT trackid, name FROM tracks WHERE name GLOB '?ere*'"
+ex4 = dbGetQuery(db, sql) 
+ex4
+```
+
+```{r}
+sql = "SELECT trackid, name FROM tracks WHERE name GLOB '*[0-9]*'"
+ex5 = dbGetQuery(db, sql) 
+head(ex5)
+```
+
+```{r}
+sql = 'SELECT albumid, COUNT(trackid) FROM tracks GROUP BY albumid'
+ex6 = dbGetQuery(db, sql) 
+head(ex6)
+```
+
+```{r}
+sql = paste('SELECT albumid, COUNT(trackid)',
+'FROM tracks GROUP BY albumid',
+'HAVING albumid=1')
+dbGetQuery(db, sql)
+```
+
+```{r}
+sql = paste('SELECT trackid, name, title FROM tracks',
+'INNER JOIN albums ON albums.albumid=tracks.albumid')
+ex7 = dbGetQuery(db, sql)
+head(ex7)
+```
